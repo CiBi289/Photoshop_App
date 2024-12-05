@@ -7,6 +7,7 @@ import io
 import numpy as np
 import scipy.ndimage as ndimage
 from skimage.util import random_noise
+from scipy.fftpack import dct, idct
 
 root = tk.Tk()
 root.title("Photoshop App")
@@ -17,6 +18,9 @@ current_image_pil = None
 edited_image = None
 undo_stack = []
 redo_stack = []
+start_x = None
+start_y = None
+rect = None
 
 def icon(icon_image):
     img = Image.open(icon_image)
@@ -85,12 +89,152 @@ def create_menu_bar():
                        gray_icon, binary_icon, adjustment_icon, edge_icon, filter_icon,
                        noise_icon, zoomin_icon, zoomout_icon, fit_icon]
 
+#***************CẮT ẢNH**************
 def crop_image():
-    pass
-#Nén ảnh
+    global edit_canvas
+    if current_image_pil is None:
+        messagebox.showwarning("Warning", "Please open an image first!")
+        return
+    edit_canvas.bind("<ButtonPress-1>", on_button_press)
+    edit_canvas.bind("<B1-Motion>", on_mouse_drag)
+    edit_canvas.bind("<ButtonRelease-1>", on_button_release)
+def on_button_press(event):
+    global start_x, start_y, rect
+    start_x = event.x
+    start_y = event.y
+    if rect:
+        edit_canvas.delete(rect)
+    rect = edit_canvas.create_rectangle(start_x, start_y, start_x, start_y, outline="red")
+
+def on_mouse_drag(event):
+    global rect
+    edit_canvas.coords(rect, start_x, start_y, event.x, event.y)
+
+def on_button_release(event):
+    global start_x, start_y, rect, current_image_pil, display_width, display_height
+    end_x, end_y = event.x, event.y
+    if None not in (start_x, start_y, end_x, end_y) and current_image_pil is not None:
+        # Ensure coordinates are in the correct order
+        x1 = min(start_x, end_x)
+        y1 = min(start_y, end_y)
+        x2 = max(start_x, end_x)
+        y2 = max(start_y, end_y)
+
+        # Calculate the scaling factors based on the displayed image dimensions
+        image_width, image_height = current_image_pil.size
+        scale_x = image_width / display_width
+        scale_y = image_height / display_height
+
+        # Calculate canvas offsets to center the image if necessary
+        canvas_width = edit_canvas.winfo_width()
+        canvas_height = edit_canvas.winfo_height()
+        x_offset = max((canvas_width - display_width) // 2, 0)
+        y_offset = max((canvas_height - display_height) // 2, 0)
+
+        # Adjust coordinates for the offset
+        x1 = max(x1 - x_offset, 0)
+        y1 = max(y1 - y_offset, 0)
+        x2 = max(x2 - x_offset, 0)
+        y2 = max(y2 - y_offset, 0)
+
+        # Scale coordinates to match the original image size
+        x1 = int(x1 * scale_x)
+        y1 = int(y1 * scale_y)
+        x2 = int(x2 * scale_x)
+        y2 = int(y2 * scale_y)
+
+        # Ensure coordinates are within the image bounds
+        x1 = max(min(x1, image_width), 0)
+        y1 = max(min(y1, image_height), 0)
+        x2 = max(min(x2, image_width), 0)
+        y2 = max(min(y2, image_height), 0)
+
+        # Crop the image if the rectangular region is valid
+        if x1 != x2 and y1 != y2:
+            push_to_undo_stack()
+            cropped_image = current_image_pil.crop((x1, y1, x2, y2))
+            current_image_pil = cropped_image
+            display_image_in_edit_canvas(current_image_pil)
+            display_image_info(current_image_pil)
+    # Unbind the events to stop cropping
+    edit_canvas.unbind("<ButtonPress-1>")
+    edit_canvas.unbind("<B1-Motion>")
+    edit_canvas.unbind("<ButtonRelease-1>")
+
+    # Remove the rectangle
+    if rect:
+        edit_canvas.delete(rect)
+#****************NÉN ẢNH***************
 def compression_image():
-    pass
-#Resize image
+    global current_image_pil, info_frame
+    push_to_undo_stack()
+    def apply_compression(compression_frame):
+        global current_image_pil
+        quality = int(quality_entry.get())
+
+        # Chuyển đổi ảnh sang YCbCr
+        ycbcr_image = current_image_pil.convert("YCbCr")
+
+        # Chia ảnh thành các khối 8x8 và nén từng khối
+        compressed_image = compress_ycbcr_blocks(ycbcr_image, quality)
+
+        current_image_pil = compressed_image  # Cập nhật ảnh hiện tại
+        display_image_in_edit_canvas(current_image_pil)
+        display_image_info(current_image_pil)
+        close_compression_frame(compression_frame)
+
+    def compress_ycbcr_blocks(image, quality):
+        y, cb, cr = image.split()  # Tách kênh YCbCr
+        y_np = np.array(y, dtype=np.float32) # Chuyển đổi kênh Y sang mảng NumPy
+        cb_np = np.array(cb) # Mảng cho kênh Cb
+        cr_np = np.array(cr) # Mảng cho kênh Cr
+    
+
+    # DCT và lượng tử hóa cho từng khối 8x8
+        rows, cols = y_np.shape
+        pad_rows = 8 - rows % 8 if rows % 8 != 0 else 0
+        pad_cols = 8 - cols % 8 if cols % 8 != 0 else 0
+        y_np = np.pad(y_np, ((0, pad_rows), (0, pad_cols)), mode='constant')
+        for i in range(0, rows, 8):
+            for j in range(0, cols, 8):
+                block = y_np[i:i+8, j:j+8]
+
+                # DCT 2D bằng scipy.fftpack.dct
+                dct_block = dct(dct(block.T, norm='ortho').T, norm='ortho')
+
+                # Lượng tử hóa
+                threshold = quality * np.abs(dct_block).max() / 100
+                dct_block[np.abs(dct_block) < threshold] = 0
+
+                # IDCT 2D bằng scipy.fftpack.idct
+                y_np[i:i+8, j:j+8] = idct(idct(dct_block.T, norm='ortho').T, norm='ortho')
+         # Cắt bỏ padding sau khi IDCT
+        y_np = y_np[:rows, :cols]
+        y_compressed = Image.fromarray(np.uint8(y_np)) # Chuyển mảng NumPy thành ảnh PIL
+
+    # Kết hợp lại ảnh
+        compressed_image = Image.merge("YCbCr", (y_compressed, cb, cr)).convert("RGB")
+        return compressed_image
+
+
+    def close_compression_frame(compression_frame):  # Nhận compression_frame làm đối số
+        compression_frame.destroy()
+
+    # Tạo khung nén
+    compression_frame = ttk.LabelFrame(info_frame, text="Compression", padding=10)
+    compression_frame.pack(fill="x", expand=True, pady=5)
+
+    # Nhập chất lượng
+    Label(compression_frame, text="Quality (1-100):").grid(row=0, column=0, padx=5, pady=5)
+    quality_entry = Entry(compression_frame, width=5)
+    quality_entry.grid(row=0, column=1, padx=5, pady=5)
+    quality_entry.insert(0, "80")
+
+    # Nút Apply
+    apply_button = Button(compression_frame, text="OK", command=lambda: apply_compression(compression_frame), font=("Arial", 12, "bold"))  # Truyền compression_frame
+    apply_button.grid(row=1, column=0, columnspan=2, padx=5, pady=5)
+
+#***************Resize image*************
 def resize_image():
     global current_image_pil, edited_image, resize_width_entry, resize_height_entry, resize_slider, apply_button, reset_button
     push_to_undo_stack()
@@ -230,23 +374,17 @@ def gray_scale_image():
 def binary_image():
     global current_image_pil, edited_image
     push_to_undo_stack()
-    gray_image = current_image_pil.convert("L")  # Convert to grayscale
-    threshold = 127  # Adjust this value
-
-    binary_image = Image.new("L", gray_image.size)  # Create a new grayscale image
-
-    for x in range(gray_image.width):
-        for y in range(gray_image.height):
-            pixel = gray_image.getpixel((x, y))
-            if pixel < threshold:
-                binary_image.putpixel((x, y), 0)  # Black
-            else:
-                binary_image.putpixel((x, y), 255)  # White
-
-        current_image_pil = binary_image  # Assign the binary image
-        display_image_in_edit_canvas(current_image_pil)
-        display_image_info(current_image_pil)
-
+    gray_image = current_image_pil.convert("L")
+    # Chuyển đổi ảnh thành mảng NumPy
+    img_array = np.array(gray_image)
+    # Áp dụng ngưỡng
+    threshold = 50
+    binary_array = np.where(img_array >= threshold, 255, 0).astype(np.uint8)
+    # Chuyển đổi mảng NumPy trở lại thành ảnh PIL
+    binary_image = Image.fromarray(binary_array, 'L')
+    current_image_pil = binary_image
+    display_image_in_edit_canvas(current_image_pil)
+    display_image_info(current_image_pil)
 def adjustment_image():
     global current_image_pil, info_frame, brightness_slider, contrast_slider, saturation_slider, adjustment_frame
     push_to_undo_stack()
@@ -740,7 +878,6 @@ def reset_image():
         current_image_pil = original_image_pil.copy()
         display_image_in_edit_canvas(current_image_pil)
         display_image_info(current_image_pil)
-        
 def add_tool_buttons(frame):
     undo_icon = icon("undo.png")
     redo_icon = icon("redo.png")
@@ -807,24 +944,28 @@ def display_original_image(image):
     original_label.image = original_image
 # Display Image on Canvas
 def display_image_in_edit_canvas(image):
-    #Hiển thị ảnh PIL trên canvas chỉnh sửa mà không thay đổi trạng thái ảnh PIL gốc.
-    global edit_canvas, edited_image
-    root.update_idletasks()
+    # Display a PIL image on the editing canvas without modifying the original PIL image state.
+    global edit_canvas, displayed_image, display_width, display_height
+    root.update_idletasks()  # Ensure canvas dimensions are updated
+    
+    # Get the canvas dimensions (use default values if dimensions are not available yet)
     canvas_width = edit_canvas.winfo_width() or 800
     canvas_height = edit_canvas.winfo_height() or 600
 
-    # Resize ảnh PIL để phù hợp với kích thước canvas
-    resized_image = image.copy()
-    resized_image.thumbnail((canvas_width, canvas_height))
+    # Calculate the scaling factor to fit the image within the canvas while maintaining the aspect ratio
+    image_width, image_height = image.size
+    scale = min(canvas_width / image_width, canvas_height / image_height)
+    display_width = int(image_width * scale)
+    display_height = int(image_height * scale)
 
-    # Chuyển ảnh PIL thành PhotoImage để hiển thị trên canvas
-    photo_image = ImageTk.PhotoImage(resized_image)
+    # Resize the image for display
+    resized_image = image.resize((display_width, display_height), Image.Resampling.LANCZOS)
+    displayed_image = ImageTk.PhotoImage(resized_image)
 
-    # Hiển thị ảnh trên canvas
+    # Clear existing content on the canvas and display the image at the center
     edit_canvas.delete("all")
-    edit_canvas.create_image(canvas_width // 2, canvas_height // 2, anchor="center", image=photo_image)
-    edit_canvas.image = photo_image  # Lưu tham chiếu để tránh bị xóa bởi garbage collector
-
+    edit_canvas.create_image(canvas_width // 2, canvas_height // 2, anchor="center", image=displayed_image)
+    edit_canvas.image = displayed_image  # Keep a reference to the image to avoid garbage collection
 # Save Image
 def save_image():
     global current_image_pil
