@@ -343,12 +343,12 @@ def transform_image():
         display_image_info(current_image_pil)
     def flip_horizontally():
         global current_image_pil
-        current_image_pil = current_image_pil.transpose(Image.FLIP_LEFT_RIGHT)
+        current_image_pil = current_image_pil.transpose(Image.Transpose.FLIP_LEFT_RIGHT)
         display_image_in_edit_canvas(current_image_pil)
         display_image_info(current_image_pil)
     def flip_vertically():
         global current_image_pil
-        current_image_pil = current_image_pil.transpose(Image.FLIP_TOP_BOTTOM)
+        current_image_pil = current_image_pil.transpose(Image.Transpose.FLIP_TOP_BOTTOM)
         display_image_in_edit_canvas(current_image_pil)
         display_image_info(current_image_pil)
     def close_transform():
@@ -494,7 +494,7 @@ def adjustment_image():
     apply_button.pack(side=tk.LEFT, padx=5)
     reset_button = Button(button_frame, text="Reset", command=reset_adjustment, font=("Arial", 12, "bold"), bg="red", fg="white")
     reset_button.pack(side=tk.LEFT, padx=5)
-    cancel_button = Button(button_frame, text="Cancel", command=close_adjustment_frame, font=("Arial", 12, "bold"), bg="red", fg="white")
+    cancel_button = Button(button_frame, text="Cancel", command=close_adjustment_frame, font=("Arial", 12, "bold"), bg="gray", fg="white")
     cancel_button.pack(side=tk.LEFT, padx=5)
 def edge_detection():
     global current_image_pil, original_image_pil, info_frame
@@ -658,17 +658,19 @@ def zoom_in():
 def zoom_out():
     global current_image_pil
     push_to_undo_stack()
-    # Thu nhỏ ảnh (giảm kích thước xuống 80%) nhưng không vượt quá kích thước khung chỉnh sửa
-    max_width, max_height = 1250, 850  # Kích thước khung chỉnh sửa
+   
+    # Thu nhỏ ảnh (giảm kích thước xuống 80%)
     width, height = current_image_pil.size
-    ratio = min(max_width / width, max_height / height, 0.8)  # Tỷ lệ thu nhỏ, đảm bảo không vượt quá khung
+    ratio = 0.8  # Tỷ lệ thu nhỏ
 
     new_width = int(width * ratio)
     new_height = int(height * ratio)
+    
     # Resize ảnh
     current_image_pil = current_image_pil.resize((new_width, new_height), Image.Resampling.LANCZOS)
-    # Hiển thị ảnh đã zoom trên Canvas
-    display_image_in_edit_canvas(current_image_pil)  # Sử dụng hàm này để hiển thị vừa vặn trong 
+    
+    # Hiển thị ảnh đã thu nhỏ
+    display_image_with_scrollbars(current_image_pil)
     display_image_info(current_image_pil)
 def display_image_with_scrollbars(image):
     #Hiển thị ảnh trên Canvas với thanh cuộn nếu ảnh lớn hơn Canvas.
