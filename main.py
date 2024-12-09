@@ -1,6 +1,6 @@
 import tkinter as tk
 from tkinter import Menu, filedialog, messagebox, ttk
-from PIL import Image, ImageTk, ImageFilter, ImageEnhance
+from PIL import Image, ImageTk, ImageEnhance
 from tkinter import Label, Entry, Scale, Button
 import cv2
 import numpy as np
@@ -23,7 +23,7 @@ rect = None
 
 def icon(icon_image):
     img = Image.open(icon_image)
-    img = img.resize((24, 24), Image.Resampling.LANCZOS)
+    img = img.resize((24, 24), Image.Resampling.BICUBIC)
     return ImageTk.PhotoImage(img)
 
 def create_menu_bar():
@@ -235,10 +235,8 @@ def compression_image():
 
 #***************Resize image*************
 def resize_image():
-    global current_image_pil, edited_image, resize_width_entry, resize_height_entry, resize_slider, apply_button, reset_button
+    global current_image_pil, edited_image, resize_width_entry, resize_height_entry, resize_slider, apply_button, reset_button, resize_controls_frame
     push_to_undo_stack()
-    sharpened_image = current_image_pil.filter(ImageFilter.SHARPEN)
-    current_image_pil = sharpened_image
     if not hasattr(root, 'resize_width_entry'):
         create_resize_controls()
 def create_resize_controls():
@@ -258,12 +256,7 @@ def create_resize_controls():
     Label(resize_controls_frame, text="Height:").pack(fill="x", padx=5, pady=2)
     resize_height_entry = Entry(resize_controls_frame)
     resize_height_entry.pack(fill="x", padx=5, pady=2)
-
-    # Slider
-    resize_slider = Scale(resize_controls_frame, from_=10, to=200, orient=tk.HORIZONTAL, label="Resize (%)", command=on_slider_change)
-    resize_slider.pack(fill="x", padx=5, pady=5)
-    resize_slider.set(100)
-
+    tk.Frame(resize_controls_frame, height=10).pack()
     # Buttons
     button_frame = tk.Frame(resize_controls_frame)
     button_frame.pack(fill="x")
@@ -298,54 +291,11 @@ def reset_size():
         resize_width_entry.insert(0, str(original_image_pil.size[0]))
         resize_height_entry.delete(0, tk.END)
         resize_height_entry.insert(0, str(original_image_pil.size[1]))
-        resize_slider.set(100)
-
 def close_resize_controls():
     global resize_controls_frame
     if resize_controls_frame is not None:
         resize_controls_frame.destroy()  #hủy khung điều khiển resize
         resize_controls_frame = None
-
-def on_slider_change(value):
-    global current_image_pil, original_image_pil
-    if current_image_pil is None or original_image_pil is None:
-        return
-
-    # Lấy kích thước gốc
-    original_width, original_height = original_image_pil.size
-
-    # Tính toán kích thước mới theo phần trăm của thanh trượt
-    new_width = int(original_width * int(value) / 100)
-    new_height = int(original_height * int(value) / 100)
-
-    # Cập nhật ô nhập Width và Height
-    resize_width_entry.delete(0, tk.END)
-    resize_width_entry.insert(0, str(new_width))
-    resize_height_entry.delete(0, tk.END)
-    resize_height_entry.insert(0, str(new_height))
-
-    # Hiển thị ảnh tạm thời đã resize trong canvas
-    temp_resized = original_image_pil.resize((new_width, new_height), Image.Resampling.LANCZOS)
-    display_image_in_edit_canvas(temp_resized)
-def update_slider_from_entry(event=None):
-    global resize_width_entry, resize_height_entry, resize_slider, original_image_pil
-
-    if original_image_pil is None:
-        return
-    # Lấy giá trị width và height từ ô nhập
-    new_width = int(resize_width_entry.get())
-    new_height = int(resize_height_entry.get())
-
-    # Tính phần trăm thay đổi dựa trên width gốc
-    original_width, original_height = original_image_pil.size
-    percentage = int((new_width / original_width) * 100)
-
-    # Cập nhật giá trị thanh trượt
-    resize_slider.set(percentage)
-
-    # Hiển thị ảnh đã resize tạm thời trên canvas
-    temp_resized = original_image_pil.resize((new_width, new_height), Image.Resampling.LANCZOS)
-    display_image_in_edit_canvas(temp_resized)
 def transform_image():
     global current_image_pil, edited_image, info_frame
     push_to_undo_stack()
@@ -389,7 +339,7 @@ def gray_scale_image():
     global current_image_pil, edited_image
     push_to_undo_stack()
     img = current_image_pil.convert("L")
-    current_image_pil = img  # Important: Assign the converted image
+    current_image_pil = img  
     display_image_in_edit_canvas(current_image_pil)
     display_image_info(current_image_pil)
 def binary_image():
@@ -731,7 +681,7 @@ def fit_on_screen():
     new_width = int(image_width * scale_factor)
     new_height = int(image_height * scale_factor)
     # Resize the image
-    resized_image = current_image_pil.resize((new_width, new_height), Image.Resampling.LANCZOS)
+    resized_image = current_image_pil.resize((new_width, new_height), Image.Resampling.BICUBIC)
     # Display the resized image
     display_image_in_edit_canvas(resized_image)
 def filter_image():
@@ -971,7 +921,7 @@ def display_image_info(image):
 # Display Original Image
 def display_original_image(image):
     global original_label
-    resized_image = image.resize((130, 130), Image.Resampling.LANCZOS)
+    resized_image = image.resize((130, 130), Image.Resampling.BICUBIC)
     original_image = ImageTk.PhotoImage(resized_image)
     original_label.config(image=original_image, text="")
     original_label.image = original_image
@@ -992,7 +942,7 @@ def display_image_in_edit_canvas(image):
     display_height = int(image_height * scale)
 
     # Resize the image for display
-    resized_image = image.resize((display_width, display_height), Image.Resampling.LANCZOS)
+    resized_image = image.resize((display_width, display_height), Image.Resampling.BICUBIC)
     displayed_image = ImageTk.PhotoImage(resized_image)
 
     # Clear existing content on the canvas and display the image at the center
