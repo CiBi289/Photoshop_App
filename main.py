@@ -840,9 +840,9 @@ def create_layout():
     info_label = tk.Label(info_frame, text="Image Info", bg="#DEFBFC", fg="black", font=("Arial", 14, "bold"))
     info_label.pack(pady=10)
     # Thông tin về size và mode
-    size_label = tk.Label(info_frame, text="Size: ", font=("Arial", 12), bg="#ffffff", anchor="w", relief="solid")
+    size_label = tk.Label(info_frame, text="Size:                   pixels", font=("Arial", 12), bg="#ffffff", anchor="w", relief="solid")
     size_label.pack(fill="x", padx=5, pady=5)
-    mode_label = tk.Label(info_frame, text="Mode: ", font=("Arial", 12), bg="#ffffff", anchor="w", relief="solid")
+    mode_label = tk.Label(info_frame, text="Mode:                         ", font=("Arial", 12), bg="#ffffff", anchor="w", relief="solid")
     mode_label.pack(fill="x", padx=5, pady=5)
 def push_to_undo_stack():
     """Lưu trạng thái hiện tại của ảnh vào stack undo"""
@@ -893,7 +893,7 @@ def add_tool_buttons(frame):
         {"image": undo_icon, "command": undo},
         {"image": redo_icon, "command": redo},
         {"image": reset_icon, "command": reset_image},
-        {"image": crop_icon, "command": lambda: print("Crop functionality here")},
+        {"image": crop_icon, "command": crop_image},
         {"image": resize_icon, "command": resize_image},
         {"image": zoomin_icon, "command": zoom_in},
         {"image": zoomout_icon, "command": zoom_out},
