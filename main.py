@@ -2,11 +2,13 @@ import tkinter as tk
 from tkinter import Menu, filedialog, messagebox, ttk
 from PIL import Image, ImageTk, ImageEnhance
 from tkinter import Label, Entry, Scale, Button
+from scipy.ndimage import gaussian_filter
 import cv2
 import numpy as np
 import scipy.ndimage as ndimage
 from skimage.util import random_noise
 from scipy.fftpack import dct, idct
+import math
 
 root = tk.Tk()
 root.title("Photoshop App")
@@ -468,64 +470,222 @@ def adjustment_image():
     cancel_button = Button(button_frame, text="Cancel", command=close_adjustment_frame, font=("Arial", 12, "bold"), bg="gray", fg="white")
     cancel_button.pack(side=tk.LEFT, padx=5)
 def edge_detection():
-    global current_image_pil, original_image_pil, info_frame
-    push_to_undo_stack()
+    global current_image_pil, original_image_pil, info_frame, edited_image
+
+    push_to_undo_stack()  # Lưu trạng thái hiện tại để có thể quay lại nếu cần
+
     def apply_sobel():
-        #Áp dụng bộ lọc Sobel để phát hiện biên.
+        """Áp dụng bộ lọc Sobel để phát hiện biên."""
         try:
-            image_np = np.array(current_image_pil.convert("L"))  # Chuyển sang grayscale
-            sobel_x = cv2.Sobel(image_np, cv2.CV_64F, 1, 0, ksize=3)
-            sobel_y = cv2.Sobel(image_np, cv2.CV_64F, 0, 1, ksize=3)
-            sobel_combined = cv2.magnitude(sobel_x, sobel_y)
-            sobel_image = Image.fromarray(np.uint8(sobel_combined))  # Trả về ảnh PIL
-            update_preview(sobel_image)  # Hiển thị ảnh PIL
+            image_gray = current_image_pil.convert("L")  # Chuyển sang grayscale
+            width, height = image_gray.size
+            pixels = image_gray.load()
+
+            # Tạo ma trận cho Sobel
+            gx = [[0] * width for _ in range(height)]
+            gy = [[0] * width for _ in range(height)]
+            img_final = [[0] * width for _ in range(height)]
+
+            # Tính toán Sobel
+            for i in range(1, height - 1):
+                for j in range(1, width - 1):
+                    gx[i][j] = (pixels[j-1, i-1] + 2*pixels[j-1, i] + pixels[j-1, i+1]) - \
+                               (pixels[j+1, i-1] + 2*pixels[j+1, i] + pixels[j+1, i+1])
+                    gy[i][j] = (pixels[j-1, i-1] + 2*pixels[j, i-1] + pixels[j+1, i-1]) - \
+                               (pixels[j-1, i+1] + 2*pixels[j, i+1] + pixels[j+1, i+1])
+
+                    magnitude = min(255, int((gx[i][j]**2 + gy[i][j]**2)**0.5))
+                    img_final[i][j] = magnitude
+
+            sobel_image = Image.new("L", (width, height))
+            sobel_pixels = sobel_image.load()
+            for i in range(height):
+                for j in range(width):
+                    sobel_pixels[j, i] = img_final[i][j]
+            update_preview(sobel_image)
         except Exception as e:
             messagebox.showerror("Error", f"Could not apply Sobel edge detection: {e}")
 
     def apply_prewitt():
-        #Áp dụng bộ lọc Prewitt để phát hiện biên.
+        """Áp dụng bộ lọc Prewitt để phát hiện biên."""
         try:
-            image_np = np.array(current_image_pil.convert("L"))  # Chuyển sang grayscale
-            kernel_x = np.array([[1, 0, -1], [1, 0, -1], [1, 0, -1]])
-            kernel_y = np.array([[1, 1, 1], [0, 0, 0], [-1, -1, -1]])
-            prewitt_x = cv2.filter2D(image_np, -1, kernel_x)
-            prewitt_y = cv2.filter2D(image_np, -1, kernel_y)
-            prewitt_combined = cv2.magnitude(prewitt_x.astype(np.float32), prewitt_y.astype(np.float32))
-            prewitt_image = Image.fromarray(np.uint8(prewitt_combined))  # Trả về ảnh PIL
-            update_preview(prewitt_image)  # Hiển thị ảnh PIL
+            image_gray = current_image_pil.convert("L")
+            width, height = image_gray.size
+            pixels = image_gray.load()
+
+            # Tạo ma trận cho Prewitt
+            gx = [[0] * width for _ in range(height)]
+            gy = [[0] * width for _ in range(height)]
+            img_final = [[0] * width for _ in range(height)]
+
+            # Tính toán Prewitt
+            for i in range(1, height - 1):
+                for j in range(1, width - 1):
+                    gx[i][j] = (pixels[j-1, i-1] + pixels[j-1, i] + pixels[j-1, i+1]) - \
+                               (pixels[j+1, i-1] + pixels[j+1, i] + pixels[j+1, i+1])
+                    gy[i][j] = (pixels[j-1, i-1] + pixels[j, i-1] + pixels[j+1, i-1]) - \
+                               (pixels[j-1, i+1] + pixels[j, i+1] + pixels[j+1, i+1])
+
+                    magnitude = min(255, int((gx[i][j]**2 + gy[i][j]**2)**0.5))
+                    img_final[i][j] = magnitude
+
+            prewitt_image = Image.new("L", (width, height))
+            prewitt_pixels = prewitt_image.load()
+            for i in range(height):
+                for j in range(width):
+                    prewitt_pixels[j, i] = img_final[i][j]
+            update_preview(prewitt_image)
         except Exception as e:
             messagebox.showerror("Error", f"Could not apply Prewitt edge detection: {e}")
 
     def apply_canny():
-        #Áp dụng thuật toán Canny để phát hiện biên.
-        image_np = np.array(current_image_pil.convert("L"))  # Chuyển sang grayscale
-        canny_edges = cv2.Canny(image_np, 100, 200)
-        canny_image = Image.fromarray(canny_edges)  # Trả về ảnh PIL
-        update_preview(canny_image)  # Hiển thị ảnh PIL
+        """Áp dụng thuật toán Canny để phát hiện biên mà không sử dụng thư viện."""
+        try:
+            # Chuyển ảnh PIL hiện tại sang grayscale dưới dạng numpy array
+            img = np.array(current_image_pil.convert('L'))
+            
+            # Hàm Gaussian Blur
+            def gaussian_blur(img, sigma=1.4):
+                return gaussian_filter(img, sigma=sigma)
+
+            # Hàm Sobel Filter
+            def sobel_filter(img):
+                gx = np.array([[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]])
+                gy = np.array([[1, 2, 1], [0, 0, 0], [-1, -2, -1]])
+                ix = np.zeros(img.shape)
+                iy = np.zeros(img.shape)
+
+                for i in range(1, img.shape[0] - 1):
+                    for j in range(1, img.shape[1] - 1):
+                        ix[i, j] = np.sum(gx * img[i-1:i+2, j-1:j+2])
+                        iy[i, j] = np.sum(gy * img[i-1:i+2, j-1:j+2])
+
+                gradient_magnitude = np.sqrt(ix**2 + iy**2)
+                gradient_direction = np.arctan2(iy, ix)
+                return gradient_magnitude, gradient_direction
+
+            # Hàm Non-Maximum Suppression
+            def non_max_suppression(grad_mag, grad_dir):
+                z = np.zeros(grad_mag.shape)
+                angle = grad_dir * 180. / np.pi
+                angle[angle < 0] += 180
+
+                for i in range(1, grad_mag.shape[0] - 1):
+                    for j in range(1, grad_mag.shape[1] - 1):
+                        try:
+                            q, r = 255, 255
+                            if (0 <= angle[i, j] < 22.5) or (157.5 <= angle[i, j] <= 180):
+                                q = grad_mag[i, j + 1]
+                                r = grad_mag[i, j - 1]
+                            elif (22.5 <= angle[i, j] < 67.5):
+                                q = grad_mag[i + 1, j - 1]
+                                r = grad_mag[i - 1, j + 1]
+                            elif (67.5 <= angle[i, j] < 112.5):
+                                q = grad_mag[i + 1, j]
+                                r = grad_mag[i - 1, j]
+                            elif (112.5 <= angle[i, j] < 157.5):
+                                q = grad_mag[i - 1, j - 1]
+                                r = grad_mag[i + 1, j + 1]
+
+                            if (grad_mag[i, j] >= q) and (grad_mag[i, j] >= r):
+                                z[i, j] = grad_mag[i, j]
+                            else:
+                                z[i, j] = 0
+                        except IndexError:
+                            pass
+                return z
+
+            # Hàm Threshold
+            def threshold(img, low, high):
+                strong = 255
+                weak = 25
+                res = np.zeros(img.shape)
+                strong_i, strong_j = np.where(img >= high)
+                weak_i, weak_j = np.where((img <= high) & (img >= low))
+                res[strong_i, strong_j] = strong
+                res[weak_i, weak_j] = weak
+                return res, weak, strong
+
+            # Hàm Hysteresis
+            def hysteresis(img, weak, strong=255):
+                for i in range(1, img.shape[0] - 1):
+                    for j in range(1, img.shape[1] - 1):
+                        if img[i, j] == weak:
+                            if ((img[i + 1, j - 1] == strong) or (img[i + 1, j] == strong) or (img[i + 1, j + 1] == strong)
+                                    or (img[i, j - 1] == strong) or (img[i, j + 1] == strong)
+                                    or (img[i - 1, j - 1] == strong) or (img[i - 1, j] == strong) or (img[i - 1, j + 1] == strong)):
+                                img[i, j] = strong
+                            else:
+                                img[i, j] = 0
+                return img
+
+            # Các bước trong thuật toán Canny
+            img_blur = gaussian_blur(img, sigma=1.4)
+            grad_mag, grad_dir = sobel_filter(img_blur)
+            non_max_img = non_max_suppression(grad_mag, grad_dir)
+            thresh_img, weak, strong = threshold(non_max_img, low=20, high=50)
+            img_canny = hysteresis(thresh_img, weak, strong)
+
+            # Chuyển ảnh kết quả về PIL và cập nhật canvas
+            canny_image = Image.fromarray(img_canny).convert("L")
+            update_preview(canny_image)
+
+        except Exception as e:
+            messagebox.showerror("Error", f"Could not apply custom Canny edge detection: {e}")
+
+    def apply_robert():
+        """Áp dụng bộ lọc Robert để phát hiện biên."""
+        try:
+            image_gray = current_image_pil.convert("L")
+            width, height = image_gray.size
+            pixels = image_gray.load()
+
+            # Tạo ma trận cho Robert
+            gx = [[0] * width for _ in range(height)]
+            gy = [[0] * width for _ in range(height)]
+            img_final = [[0] * width for _ in range(height)]
+
+            # Tính toán Robert
+            for i in range(height - 1):
+                for j in range(width - 1):
+                    gx[i][j] = pixels[j, i] - pixels[j+1, i+1]
+                    gy[i][j] = pixels[j+1, i] - pixels[j, i+1]
+
+                    magnitude = min(255, int((gx[i][j]**2 + gy[i][j]**2)**0.5))
+                    img_final[i][j] = magnitude
+
+            robert_image = Image.new("L", (width, height))
+            robert_pixels = robert_image.load()
+            for i in range(height):
+                for j in range(width):
+                    robert_pixels[j, i] = img_final[i][j]
+            update_preview(robert_image)
+        except Exception as e:
+            messagebox.showerror("Error", f"Could not apply Robert edge detection: {e}")
 
     def update_preview(new_image):
-    #Cập nhật ảnh xem trước trong canvas chỉnh sửa.
+        """Cập nhật ảnh xem trước trong canvas chỉnh sửa."""
         global edited_image
-        edited_image = new_image  # Gán ảnh PIL vào biến tạm thời
-        display_image_in_edit_canvas(edited_image)  # Hiển thị ảnh trên canvas
+        edited_image = new_image
+        display_image_in_edit_canvas(edited_image)
 
     def apply_changes():
-        #Áp dụng thay đổi lên ảnh hiện tại và thoát khỏi chức năng Edge Detection.
+        """Áp dụng thay đổi lên ảnh hiện tại."""
         global current_image_pil, edited_image
         if edited_image:
-            current_image_pil = edited_image  # Gán ảnh PIL đã chỉnh sửa cho current_image_pil
-            display_image_info(current_image_pil)  # Cập nhật thông tin ảnh
-        close_edge_detection()  # Thoát khỏi khung Edge Detection
+            current_image_pil = edited_image
+            display_image_info(current_image_pil)
+        close_edge_detection()
 
     def reset_changes():
-        #Đặt lại ảnh về trạng thái ban đầu.
+        """Đặt lại ảnh về trạng thái ban đầu."""
         global current_image_pil, original_image_pil
         current_image_pil = original_image_pil.copy()
         display_image_in_edit_canvas(current_image_pil)
         display_image_info(current_image_pil)
 
     def close_edge_detection():
-        #Xóa khung Edge Detection khỏi info_frame.
+        """Đóng khung chức năng Edge Detection."""
         for widget in info_frame.winfo_children():
             if isinstance(widget, ttk.LabelFrame) and widget.cget("text") == "Edge Detection":
                 widget.destroy()
@@ -537,6 +697,7 @@ def edge_detection():
     # Thêm các nút lựa chọn phương pháp
     ttk.Button(edge_frame, text="Sobel", command=apply_sobel).pack(fill="x", pady=5)
     ttk.Button(edge_frame, text="Prewitt", command=apply_prewitt).pack(fill="x", pady=5)
+    ttk.Button(edge_frame, text="Robert", command=apply_robert).pack(fill="x", pady=5)
     ttk.Button(edge_frame, text="Canny", command=apply_canny).pack(fill="x", pady=5)
 
     # Thêm nút OK và Reset
@@ -702,7 +863,7 @@ def filter_image():
                             temp.append(0)
                         else:
                             temp.append(data[neighbor_x][neighbor_y])
-                data_final[i][j] = np.mean(temp).astype(np.uint8)
+                data_final[i][j] = int(np.mean(temp))
         return data_final
     def median_filter(data, kernel_size):
         kernel_halfsize = kernel_size // 2
@@ -764,7 +925,7 @@ def filter_image():
     filter_var = tk.StringVar(value="Gaussian")
     filter_options = ["Gaussian", "Median", "Mean"]
     filter_dropdown = ttk.Combobox(filter_frame, textvariable=filter_var, values=filter_options, state="readonly")
-    filter_dropdown.grid(row=0, column=0, columnspan=2, pady=5)
+    filter_dropdown.grid(row=0, column=1, columnspan=2, pady=5)
 
     ok_button = tk.Button(filter_frame, text="OK", font=("Arial", 12, "bold"), bg="#4CAF50", fg="white", command=lambda: apply_filter(filter_var.get()))
     ok_button.grid(row=1, column=0, padx=5, pady=5)
@@ -869,19 +1030,22 @@ def add_tool_buttons(frame):
     resize_icon = icon("resize.png")
     zoomin_icon = icon("zoom-in.png")
     zoomout_icon = icon("zoom-out.png")
-    
+    gray_icon = icon("gray.png")
+    noise_icon = icon("noise.png")
     buttons = [
         {"image": undo_icon, "command": undo},
         {"image": redo_icon, "command": redo},
         {"image": reset_icon, "command": reset_image},
         {"image": crop_icon, "command": crop_image},
         {"image": resize_icon, "command": resize_image},
+        {"image": gray_icon, "command": gray_scale_image},
+        {"image": noise_icon, "command": add_noise},
         {"image": zoomin_icon, "command": zoom_in},
         {"image": zoomout_icon, "command": zoom_out},
         # Có thể thêm icon ở đây nếu cần
     ]
 
-    frame.image_refs = [undo_icon, redo_icon, reset_icon, crop_icon, resize_icon, zoomin_icon, zoomout_icon]
+    frame.image_refs = [undo_icon, redo_icon, reset_icon, crop_icon, resize_icon, gray_icon, noise_icon, zoomin_icon, zoomout_icon]
 
     for index, button in enumerate(buttons):
         row = index // 3  # Chia index cho 2 để lấy số lượng row
