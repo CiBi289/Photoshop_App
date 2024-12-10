@@ -1,14 +1,13 @@
+
 import tkinter as tk
 from tkinter import Menu, filedialog, messagebox, ttk
 from PIL import Image, ImageTk, ImageEnhance
 from tkinter import Label, Entry, Scale, Button
 from scipy.ndimage import gaussian_filter
-import cv2
 import numpy as np
 import scipy.ndimage as ndimage
 from skimage.util import random_noise
-from scipy.fftpack import dct, idct
-import math
+from encoder import compression_img
 
 root = tk.Tk()
 root.title("Photoshop App")
@@ -25,7 +24,7 @@ rect = None
 
 def icon(icon_image):
     img = Image.open(icon_image)
-    img = img.resize((24, 24), Image.Resampling.BICUBIC)
+    img = img.resize((24, 24), Image.Resampling.LANCZOS)
     return ImageTk.PhotoImage(img)
 
 def create_menu_bar():
@@ -99,6 +98,7 @@ def crop_image():
     edit_canvas.bind("<ButtonPress-1>", on_button_press)
     edit_canvas.bind("<B1-Motion>", on_mouse_drag)
     edit_canvas.bind("<ButtonRelease-1>", on_button_release)
+    
 def on_button_press(event):
     global start_x, start_y, rect
     start_x = event.x
@@ -165,61 +165,22 @@ def on_button_release(event):
     # Remove the rectangle
     if rect:
         edit_canvas.delete(rect)
+
 #****************NÉN ẢNH***************
 def compression_image():
     global current_image_pil, info_frame
     push_to_undo_stack()
+
     def apply_compression(compression_frame):
         global current_image_pil
+        withImg, heightImg = current_image_pil.size
         quality = int(quality_entry.get())
-
-        # Chuyển đổi ảnh sang YCbCr
-        ycbcr_image = current_image_pil.convert("YCbCr")
-
-        # Chia ảnh thành các khối 8x8 và nén từng khối
-        compressed_image = compress_ycbcr_blocks(ycbcr_image, quality)
-
-        current_image_pil = compressed_image  # Cập nhật ảnh hiện tại
-        display_image_in_edit_canvas(current_image_pil)
-        display_image_info(current_image_pil)
+        compression_img(current_image_pil, quality)
+        print(f"Compressing image of size {withImg}x{heightImg} with quality {quality}")
         close_compression_frame(compression_frame)
-
-    def compress_ycbcr_blocks(image, quality):
-        y, cb, cr = image.split()  # Tách kênh YCbCr
-        y_np = np.array(y, dtype=np.float32) # Chuyển đổi kênh Y sang mảng NumPy
-        cb_np = np.array(cb) # Mảng cho kênh Cb
-        cr_np = np.array(cr) # Mảng cho kênh Cr
-    
-
-    # DCT và lượng tử hóa cho từng khối 8x8
-        rows, cols = y_np.shape
-        pad_rows = 8 - rows % 8 if rows % 8 != 0 else 0
-        pad_cols = 8 - cols % 8 if cols % 8 != 0 else 0
-        y_np = np.pad(y_np, ((0, pad_rows), (0, pad_cols)), mode='constant')
-        for i in range(0, rows, 8):
-            for j in range(0, cols, 8):
-                block = y_np[i:i+8, j:j+8]
-
-                # DCT 2D bằng scipy.fftpack.dct
-                dct_block = dct(dct(block.T, norm='ortho').T, norm='ortho')
-
-                # Lượng tử hóa
-                threshold = quality * np.abs(dct_block).max() / 100
-                dct_block[np.abs(dct_block) < threshold] = 0
-
-                # IDCT 2D bằng scipy.fftpack.idct
-                y_np[i:i+8, j:j+8] = idct(idct(dct_block.T, norm='ortho').T, norm='ortho')
-         # Cắt bỏ padding sau khi IDCT
-        y_np = y_np[:rows, :cols]
-        y_compressed = Image.fromarray(np.uint8(y_np)) # Chuyển mảng NumPy thành ảnh PIL
-
-    # Kết hợp lại ảnh
-        compressed_image = Image.merge("YCbCr", (y_compressed, cb, cr)).convert("RGB")
-        return compressed_image
-
-
     def close_compression_frame(compression_frame):  # Nhận compression_frame làm đối số
         compression_frame.destroy()
+
 
     # Tạo khung nén
     compression_frame = ttk.LabelFrame(info_frame, text="Compression", padding=10)
@@ -232,7 +193,7 @@ def compression_image():
     quality_entry.insert(0, "80")
 
     # Nút Apply
-    apply_button = Button(compression_frame, text="OK", command=lambda: apply_compression(compression_frame), font=("Arial", 12, "bold"), bg = "green", fg = "white")  # Truyền compression_frame
+    apply_button = Button(compression_frame, text="OK", command=lambda: apply_compression(compression_frame), font=("Arial", 12, "bold"))  # Truyền compression_frame
     apply_button.grid(row=1, column=0, columnspan=2, padx=5, pady=5)
 
 #***************Resize image*************
