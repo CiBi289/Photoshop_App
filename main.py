@@ -449,14 +449,15 @@ def adjustment_image():
     cancel_button = Button(button_frame, text="Cancel", command=close_adjustment_frame, font=("Arial", 12, "bold"), bg="gray", fg="white")
     cancel_button.pack(side=tk.LEFT, padx=5)
 def edge_detection():
-    global current_image_pil, original_image_pil, info_frame, edited_image
+    global current_image_pil, original_image_pil, info_frame
 
     push_to_undo_stack()  # Lưu trạng thái hiện tại để có thể quay lại nếu cần
 
     def apply_sobel():
         """Áp dụng bộ lọc Sobel để phát hiện biên."""
         try:
-            image_gray = current_image_pil.convert("L")  # Chuyển sang grayscale
+            gray_scale_image()
+            image_gray = current_image_pil  # Chuyển sang grayscale
             width, height = image_gray.size
             pixels = image_gray.load()
 
@@ -488,7 +489,8 @@ def edge_detection():
     def apply_prewitt():
         """Áp dụng bộ lọc Prewitt để phát hiện biên."""
         try:
-            image_gray = current_image_pil.convert("L")
+            gray_scale_image()
+            image_gray = current_image_pil
             width, height = image_gray.size
             pixels = image_gray.load()
 
@@ -521,7 +523,8 @@ def edge_detection():
         """Áp dụng thuật toán Canny để phát hiện biên mà không sử dụng thư viện."""
         try:
             # Chuyển ảnh PIL hiện tại sang grayscale dưới dạng numpy array
-            img = np.array(current_image_pil.convert('L'))
+            gray_scale_image()
+            img = np.array(current_image_pil)
             
             # Hàm Gaussian Blur
             def gaussian_blur(img, sigma=1.4):
@@ -615,7 +618,8 @@ def edge_detection():
     def apply_robert():
         """Áp dụng bộ lọc Robert để phát hiện biên."""
         try:
-            image_gray = current_image_pil.convert("L")
+            gray_scale_image()
+            image_gray = current_image_pil
             width, height = image_gray.size
             pixels = image_gray.load()
 
@@ -665,9 +669,11 @@ def edge_detection():
 
     def close_edge_detection():
         """Đóng khung chức năng Edge Detection."""
+        # Duyệt qua tất cả các widget con trong info_frame
         for widget in info_frame.winfo_children():
+            # Kiểm tra xem widget hiện tại có phải là một LabelFrame và tiêu đề của khung đó là "Edge Detection".
             if isinstance(widget, ttk.LabelFrame) and widget.cget("text") == "Edge Detection":
-                widget.destroy()
+                widget.destroy() #Xóa khung
 
     # Tạo khung Edge Detection
     edge_frame = ttk.LabelFrame(info_frame, text="Edge Detection", padding=10)
