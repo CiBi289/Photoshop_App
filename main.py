@@ -325,7 +325,8 @@ def gray_scale_image():
 def binary_image():
     global current_image_pil, edited_image
     push_to_undo_stack()
-    gray_image = current_image_pil.convert("L")
+    gray_scale_image()
+    gray_image = current_image_pil
     # Chuyển đổi ảnh thành mảng NumPy
     img_array = np.array(gray_image)
     # Áp dụng ngưỡng
