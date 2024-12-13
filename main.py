@@ -299,10 +299,27 @@ def transform_image():
     ttk.Button(buttons_frame, text="Flip Vertically", command=flip_vertically).pack(fill="x", pady=5)
     ttk.Button(buttons_frame, text="OK", command=close_transform).pack(fill="x", pady=5)
 def gray_scale_image():
-    global current_image_pil, edited_image
+    global current_image_pil
     push_to_undo_stack()
-    img = current_image_pil.convert("L")
-    current_image_pil = img  
+
+    # Lấy kích thước của ảnh hiện tại
+    width, height = current_image_pil.size
+    
+    # Tạo một ảnh mới với chế độ "L" (grayscale)
+    gray_image = Image.new("L", (width, height))
+
+    # Lấy dữ liệu pixel của ảnh gốc
+    pixels = current_image_pil.load()
+
+    # Duyệt qua từng pixel và tính giá trị grayscale
+    for i in range(width):
+        for j in range(height):
+            r, g, b = pixels[i, j][:3]  # Lấy giá trị R, G, B của pixel
+            gray_value = int(0.299 * r + 0.587 * g + 0.114 * b)  # Tính giá trị grayscale
+            gray_image.putpixel((i, j), gray_value)  # Gán giá trị grayscale cho ảnh mới
+
+    # Cập nhật ảnh hiện tại
+    current_image_pil = gray_image
     display_image_in_edit_canvas(current_image_pil)
     display_image_info(current_image_pil)
 def binary_image():
