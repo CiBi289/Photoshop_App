@@ -155,7 +155,7 @@ def on_button_release(event):
             push_to_undo_stack()
             cropped_image = current_image_pil.crop((x1, y1, x2, y2))
             current_image_pil = cropped_image
-            display_image_in_edit_canvas(current_image_pil)
+            display_image(current_image_pil)
             display_image_info(current_image_pil)
     # Unbind the events to stop cropping
     edit_canvas.unbind("<ButtonPress-1>")
@@ -245,7 +245,7 @@ def apply_resize():
         raise ValueError("Width and height must be positive.")
     global current_image_pil
     current_image_pil = current_image_pil.resize((new_width, new_height), Image.Resampling.BICUBIC)
-    display_image_in_edit_canvas(current_image_pil)
+    display_image(current_image_pil)
     display_image_info(current_image_pil)
 
 def reset_size():
@@ -268,22 +268,22 @@ def transform_image():
     def rotate90():
         global current_image_pil
         current_image_pil = current_image_pil.rotate(90, expand=True)
-        display_image_in_edit_canvas(current_image_pil)
+        display_image(current_image_pil)
         display_image_info(current_image_pil)
     def rotate180():
         global current_image_pil
         current_image_pil = current_image_pil.rotate(180, expand=True)
-        display_image_in_edit_canvas(current_image_pil)
+        display_image(current_image_pil)
         display_image_info(current_image_pil)
     def flip_horizontally():
         global current_image_pil
         current_image_pil = current_image_pil.transpose(Image.Transpose.FLIP_LEFT_RIGHT)
-        display_image_in_edit_canvas(current_image_pil)
+        display_image(current_image_pil)
         display_image_info(current_image_pil)
     def flip_vertically():
         global current_image_pil
         current_image_pil = current_image_pil.transpose(Image.Transpose.FLIP_TOP_BOTTOM)
-        display_image_in_edit_canvas(current_image_pil)
+        display_image(current_image_pil)
         display_image_info(current_image_pil)
     def close_transform():
         transform_frame.pack_forget()  # Remove the frame
@@ -320,7 +320,7 @@ def gray_scale_image():
 
     # Cập nhật ảnh hiện tại
     current_image_pil = gray_image
-    display_image_in_edit_canvas(current_image_pil)
+    display_image(current_image_pil)
     display_image_info(current_image_pil)
 def binary_image():
     global current_image_pil, edited_image
@@ -334,7 +334,7 @@ def binary_image():
     # Chuyển đổi mảng NumPy trở lại thành ảnh PIL
     binary_image = Image.fromarray(binary_array, 'L')
     current_image_pil = binary_image
-    display_image_in_edit_canvas(current_image_pil)
+    display_image(current_image_pil)
     display_image_info(current_image_pil)
 def adjustment_image():
     global current_image_pil, info_frame, brightness_slider, contrast_slider, saturation_slider, adjustment_frame
@@ -368,7 +368,7 @@ def adjustment_image():
         # Cập nhật hình ảnh hiện tại
         global current_image_pil
         current_image_pil = adjusted_image
-        display_image_in_edit_canvas(current_image_pil)
+        display_image(current_image_pil)
         display_image_info(current_image_pil)
     def reset_adjustment():
         #Đặt lại các giá trị của thanh trượt và ô nhập số về mặc định.
@@ -645,7 +645,7 @@ def edge_detection():
         """Cập nhật ảnh xem trước trong canvas chỉnh sửa."""
         global edited_image
         edited_image = new_image
-        display_image_in_edit_canvas(edited_image)
+        display_image(edited_image)
 
     def apply_changes():
         """Áp dụng thay đổi lên ảnh hiện tại."""
@@ -659,7 +659,7 @@ def edge_detection():
         """Đặt lại ảnh về trạng thái ban đầu."""
         global current_image_pil, original_image_pil
         current_image_pil = original_image_pil.copy()
-        display_image_in_edit_canvas(current_image_pil)
+        display_image(current_image_pil)
         display_image_info(current_image_pil)
 
     def close_edge_detection():
@@ -699,7 +699,7 @@ def add_noise():
         else:
             return
         current_image_pil = noisy_image
-        display_image_in_edit_canvas(current_image_pil)
+        display_image(current_image_pil)
 
     def add_gaussian_noise(image, amount):
         """Thêm nhiễu Gaussian vào ảnh."""
@@ -718,7 +718,7 @@ def add_noise():
     def reset_noise():
         global current_image_pil, original_image_pil
         current_image_pil = original_image_pil.copy()
-        display_image_in_edit_canvas(current_image_pil)
+        display_image(current_image_pil)
     def close_noise_frame():
         global noise_frame
         if noise_frame is not None:
@@ -822,7 +822,7 @@ def fit_on_screen():
     # Resize the image
     resized_image = current_image_pil.resize((new_width, new_height), Image.Resampling.BICUBIC)
     # Display the resized image
-    display_image_in_edit_canvas(resized_image)
+    display_image(resized_image)
 def filter_image():
     global current_image_pil, original_image_pil, filter_frame
     push_to_undo_stack()
@@ -868,7 +868,7 @@ def filter_image():
         filtered_image_array = ndimage.gaussian_filter(img_array, sigma=1)
         filtered_image = Image.fromarray(filtered_image_array)
         current_image_pil = filtered_image
-        display_image_in_edit_canvas(current_image_pil)
+        display_image(current_image_pil)
         display_image_info(current_image_pil)
     def apply_median_filter():
         global current_image_pil
@@ -877,7 +877,7 @@ def filter_image():
         filtered_image_array = median_filter(img_array, kernel_size=3)
         filtered_image = Image.fromarray(filtered_image_array)
         current_image_pil = filtered_image
-        display_image_in_edit_canvas(current_image_pil)
+        display_image(current_image_pil)
         display_image_info(current_image_pil)
     def apply_mean_filter():
         global current_image_pil
@@ -886,12 +886,12 @@ def filter_image():
         filtered_image_array = mean_filter(img_array, kernel_size=3)
         filtered_image = Image.fromarray(filtered_image_array)
         current_image_pil = filtered_image
-        display_image_in_edit_canvas(current_image_pil)
+        display_image(current_image_pil)
         display_image_info(current_image_pil)
     def reset_filter():
         global current_image_pil
         current_image_pil = original_image_pil.copy()
-        display_image_in_edit_canvas(current_image_pil)
+        display_image(current_image_pil)
     def close_filter_frame():
         global filter_frame
         if filter_frame is not None:
@@ -979,7 +979,7 @@ def undo():
         redo_stack.append(current_image_pil.copy())
         # Lấy trạng thái trước từ undo stack
         current_image_pil = undo_stack.pop()
-        display_image_in_edit_canvas(current_image_pil)
+        display_image(current_image_pil)
         display_image_info(current_image_pil)
 
 def redo():
@@ -990,7 +990,7 @@ def redo():
         undo_stack.append(current_image_pil.copy())
         # Lấy trạng thái tiếp theo từ redo stack
         current_image_pil = redo_stack.pop()
-        display_image_in_edit_canvas(current_image_pil)
+        display_image(current_image_pil)
         display_image_info(current_image_pil)
 def reset_image():
     """Khôi phục lại ảnh ban đầu."""
@@ -998,7 +998,7 @@ def reset_image():
     if original_image_pil:
         push_to_undo_stack()  # Lưu trạng thái hiện tại vào undo trước khi reset
         current_image_pil = original_image_pil.copy()
-        display_image_in_edit_canvas(current_image_pil)
+        display_image(current_image_pil)
         display_image_info(current_image_pil)
 def add_tool_buttons(frame):
     undo_icon = icon("undo.png")
@@ -1043,7 +1043,7 @@ def open_image():
         # Display original image
         display_original_image(image)
         # Display image on edit Canvas
-        display_image_in_edit_canvas(image)
+        display_image(image)
         # Update image info
         display_image_info(image)
     if hasattr(root, 'resize_width_entry'):
@@ -1068,7 +1068,7 @@ def display_original_image(image):
     original_label.config(image=original_image, text="")
     original_label.image = original_image
 # Display Image on Canvas
-def display_image_in_edit_canvas(image):
+def display_image(image):
     # Display a PIL image on the editing canvas without modifying the original PIL image state.
     global edit_canvas, displayed_image, display_width, display_height
     root.update_idletasks()  # Ensure canvas dimensions are updated
