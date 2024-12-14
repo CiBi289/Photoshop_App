@@ -1,4 +1,3 @@
-
 import tkinter as tk
 from tkinter import Menu, filedialog, messagebox, ttk
 from PIL import Image, ImageTk, ImageEnhance
@@ -97,8 +96,7 @@ def crop_image():
         return
     edit_canvas.bind("<ButtonPress-1>", on_button_press)
     edit_canvas.bind("<B1-Motion>", on_mouse_drag)
-    edit_canvas.bind("<ButtonRelease-1>", on_button_release)
-    
+    edit_canvas.bind("<ButtonRelease-1>", on_button_release)  
 def on_button_press(event):
     global start_x, start_y, rect
     start_x = event.x
@@ -106,71 +104,60 @@ def on_button_press(event):
     if rect:
         edit_canvas.delete(rect)
     rect = edit_canvas.create_rectangle(start_x, start_y, start_x, start_y, outline="red")
-
 def on_mouse_drag(event):
     global rect
     edit_canvas.coords(rect, start_x, start_y, event.x, event.y)
-
 def on_button_release(event):
     global start_x, start_y, rect, current_image_pil, display_width, display_height
     end_x, end_y = event.x, event.y
     if None not in (start_x, start_y, end_x, end_y) and current_image_pil is not None:
-        # Ensure coordinates are in the correct order
+        # Đảm bảo các tọa độ được sắp xếp đúng thứ tự
         x1 = min(start_x, end_x)
         y1 = min(start_y, end_y)
         x2 = max(start_x, end_x)
         y2 = max(start_y, end_y)
-
-        # Calculate the scaling factors based on the displayed image dimensions
+        # Tính toán các hệ số tỷ lệ dựa trên kích thước hiển thị của ảnh
         image_width, image_height = current_image_pil.size
         scale_x = image_width / display_width
         scale_y = image_height / display_height
-
-        # Calculate canvas offsets to center the image if necessary
+        # Tính toán phần bù của canvas để căn giữa hình ảnh nếu cần thiết
         canvas_width = edit_canvas.winfo_width()
         canvas_height = edit_canvas.winfo_height()
         x_offset = max((canvas_width - display_width) // 2, 0)
         y_offset = max((canvas_height - display_height) // 2, 0)
-
-        # Adjust coordinates for the offset
+        # Điều chỉnh tọa độ theo phần bù
         x1 = max(x1 - x_offset, 0)
         y1 = max(y1 - y_offset, 0)
         x2 = max(x2 - x_offset, 0)
         y2 = max(y2 - y_offset, 0)
-
-        # Scale coordinates to match the original image size
+        # Tỷ lệ tọa độ để khớp với kích thước gốc của ảnh
         x1 = int(x1 * scale_x)
         y1 = int(y1 * scale_y)
         x2 = int(x2 * scale_x)
         y2 = int(y2 * scale_y)
-
-        # Ensure coordinates are within the image bounds
+        # Đảm bảo các tọa độ nằm trong giới hạn của ảnh
         x1 = max(min(x1, image_width), 0)
         y1 = max(min(y1, image_height), 0)
         x2 = max(min(x2, image_width), 0)
         y2 = max(min(y2, image_height), 0)
-
-        # Crop the image if the rectangular region is valid
+        # Cắt ảnh nếu vùng hình chữ nhật hợp lệ
         if x1 != x2 and y1 != y2:
             push_to_undo_stack()
             cropped_image = current_image_pil.crop((x1, y1, x2, y2))
             current_image_pil = cropped_image
             display_image(current_image_pil)
             display_image_info(current_image_pil)
-    # Unbind the events to stop cropping
+    # Hủy liên kết các sự kiện để dừng chức năng cắt ảnh
     edit_canvas.unbind("<ButtonPress-1>")
     edit_canvas.unbind("<B1-Motion>")
     edit_canvas.unbind("<ButtonRelease-1>")
-
-    # Remove the rectangle
+    # Xóa hình chữ nhật
     if rect:
         edit_canvas.delete(rect)
-
 #****************NÉN ẢNH***************
 def compression_image():
     global current_image_pil, info_frame
     push_to_undo_stack()
-
     def apply_compression(compression_frame):
         global current_image_pil
         withImg, heightImg = current_image_pil.size
@@ -180,22 +167,17 @@ def compression_image():
         close_compression_frame(compression_frame)
     def close_compression_frame(compression_frame):  # Nhận compression_frame làm đối số
         compression_frame.destroy()
-
-
     # Tạo khung nén
     compression_frame = ttk.LabelFrame(info_frame, text="Compression", padding=10)
     compression_frame.pack(fill="x", expand=True, pady=5)
-
     # Nhập chất lượng
     Label(compression_frame, text="Quality (1-100):").grid(row=0, column=0, padx=5, pady=5)
     quality_entry = Entry(compression_frame, width=5)
     quality_entry.grid(row=0, column=1, padx=5, pady=5)
     quality_entry.insert(0, "80")
-
     # Nút Apply
     apply_button = Button(compression_frame, text="OK", command=lambda: apply_compression(compression_frame), font=("Arial", 12, "bold"))  # Truyền compression_frame
     apply_button.grid(row=1, column=0, columnspan=2, padx=5, pady=5)
-
 #***************Resize image*************
 def resize_image():
     global current_image_pil, edited_image, resize_width_entry, resize_height_entry, resize_slider, apply_button, reset_button, resize_controls_frame
@@ -301,23 +283,15 @@ def transform_image():
 def gray_scale_image():
     global current_image_pil
     push_to_undo_stack()
-
-    # Lấy kích thước của ảnh hiện tại
-    width, height = current_image_pil.size
-    
-    # Tạo một ảnh mới với chế độ "L" (grayscale)
-    gray_image = Image.new("L", (width, height))
-
-    # Lấy dữ liệu pixel của ảnh gốc
-    pixels = current_image_pil.load()
-
+    width, height = current_image_pil.size # Lấy kích thước của ảnh hiện tại
+    gray_image = Image.new("L", (width, height)) # Tạo một ảnh mới với chế độ "L" (grayscale)
+    pixels = current_image_pil.load() # Lấy dữ liệu pixel của ảnh gốc
     # Duyệt qua từng pixel và tính giá trị grayscale
     for i in range(width):
         for j in range(height):
             r, g, b = pixels[i, j][:3]  # Lấy giá trị R, G, B của pixel
             gray_value = int(0.299 * r + 0.587 * g + 0.114 * b)  # Tính giá trị grayscale
             gray_image.putpixel((i, j), gray_value)  # Gán giá trị grayscale cho ảnh mới
-
     # Cập nhật ảnh hiện tại
     current_image_pil = gray_image
     display_image(current_image_pil)
@@ -327,8 +301,7 @@ def binary_image():
     push_to_undo_stack()
     gray_scale_image()
     gray_image = current_image_pil
-    # Chuyển đổi ảnh thành mảng NumPy
-    img_array = np.array(gray_image)
+    img_array = np.array(gray_image) # Chuyển đổi ảnh thành mảng NumPy
     # Áp dụng ngưỡng
     threshold = 50
     binary_array = np.where(img_array >= threshold, 255, 0).astype(np.uint8)
@@ -439,7 +412,6 @@ def adjustment_image():
     saturation_entry.bind("<Return>", lambda event: update_slider_from_entry(saturation_slider, saturation_entry))
 
     # ---- Buttons ----
-    
     button_frame = tk.Frame(adjustment_frame)
     button_frame.grid(row=6, column=0, columnspan=2, padx=5, pady=5)
     apply_button = Button(button_frame, text="OK", command=apply_adjustment, font=("Arial", 12, "bold"), bg="#4CAF50", fg="white")
@@ -759,33 +731,23 @@ def add_noise():
 def zoom_in():
     global current_image_pil
     push_to_undo_stack()
-    
-    # Phóng to ảnh (tăng kích thước lên 125%)
     width, height = current_image_pil.size
     ratio = 1.5  # Tỷ lệ phóng to
-
     new_width = int(width * ratio)
     new_height = int(height * ratio)
-
     # Resize ảnh
     current_image_pil = current_image_pil.resize((new_width, new_height), Image.Resampling.BICUBIC)
-    
     # Hiển thị ảnh đã zoom trên Canvas, đảm bảo ảnh nằm ở giữa
     display_image_with_scrollbars(current_image_pil)
 def zoom_out():
     global current_image_pil
     push_to_undo_stack()
-   
-    # Thu nhỏ ảnh (giảm kích thước xuống 80%)
     width, height = current_image_pil.size
     ratio = 0.8  # Tỷ lệ thu nhỏ
-
     new_width = int(width * ratio)
     new_height = int(height * ratio)
-    
     # Resize ảnh
     current_image_pil = current_image_pil.resize((new_width, new_height), Image.Resampling.BICUBIC)
-    
     # Hiển thị ảnh đã thu nhỏ, đảm bảo ảnh nằm ở giữa
     display_image_with_scrollbars(current_image_pil)
 def display_image_with_scrollbars(image):
@@ -797,11 +759,9 @@ def display_image_with_scrollbars(image):
     # Lấy kích thước Canvas hiện tại
     canvas_width = edit_canvas.winfo_width()
     canvas_height = edit_canvas.winfo_height()
-
     # Tính toán vị trí để đặt ảnh ở giữa Canvas
     x_offset = max((canvas_width - image_width) // 2, 0)
     y_offset = max((canvas_height - image_height) // 2, 0)
-
     # Chuyển ảnh PIL thành PhotoImage
     photo_image = ImageTk.PhotoImage(image)
     # Thiết lập kích thước Canvas dựa trên kích thước ảnh
@@ -809,26 +769,25 @@ def display_image_with_scrollbars(image):
     # Hiển thị ảnh ở vị trí giữa Canvas
     edit_canvas.create_image(x_offset, y_offset, anchor="nw", image=photo_image)
     edit_canvas.image = photo_image  # Lưu tham chiếu để tránh bị xóa bởi garbage collector
-
 def fit_on_screen():
     global current_image_pil
     push_to_undo_stack()
-    # Get the actual size of the edit_canvas
+    # Lấy kích thước thực tế của edit_canvas
     canvas_width = edit_canvas.winfo_width()
     canvas_height = edit_canvas.winfo_height()
-    # If the canvas size is not properly initialized, wait and try again
+    # Nếu kích thước canvas chưa được khởi tạo đúng, đợi và thử lại
     if canvas_width == 1 and canvas_height == 1:
         root.after(100, fit_on_screen)
         return
     image_width, image_height = current_image_pil.size
-    # Calculate the scaling factor to fit the image within the canvas
+    # Tính toán hệ số tỷ lệ để ảnh khớp với kích thước của canvas
     scale_factor = min(canvas_width / image_width, canvas_height / image_height)
-    # Calculate the new dimensions
+    # Tính toán kích thước mới
     new_width = int(image_width * scale_factor)
     new_height = int(image_height * scale_factor)
-    # Resize the image
+    # Thay đổi kích thước của ảnh
     resized_image = current_image_pil.resize((new_width, new_height), Image.Resampling.BICUBIC)
-    # Display the resized image
+    # Hiển thị ảnh đã thay đổi kích thước
     display_image(resized_image)
 def filter_image():
     global current_image_pil, original_image_pil, filter_frame
@@ -871,6 +830,7 @@ def filter_image():
     def apply_gaussian_filter():
         global current_image_pil
         push_to_undo_stack()
+        gray_scale_image()
         img_array = np.array(current_image_pil)
         filtered_image_array = ndimage.gaussian_filter(img_array, sigma=1)
         filtered_image = Image.fromarray(filtered_image_array)
@@ -880,6 +840,7 @@ def filter_image():
     def apply_median_filter():
         global current_image_pil
         push_to_undo_stack()
+        gray_scale_image()
         img_array = np.array(current_image_pil)
         filtered_image_array = median_filter(img_array, kernel_size=3)
         filtered_image = Image.fromarray(filtered_image_array)
@@ -889,6 +850,7 @@ def filter_image():
     def apply_mean_filter():
         global current_image_pil
         push_to_undo_stack()
+        gray_scale_image()
         img_array = np.array(current_image_pil)
         filtered_image_array = mean_filter(img_array, kernel_size=3)
         filtered_image = Image.fromarray(filtered_image_array)
@@ -977,7 +939,6 @@ def push_to_undo_stack():
     if current_image_pil:
         undo_stack.append(current_image_pil.copy())
         redo_stack.clear()  # Xóa stack redo khi có thay đổi mới
-
 def undo():
     """Hoàn tác về trạng thái trước đó"""
     global current_image_pil, undo_stack, redo_stack
@@ -1045,13 +1006,8 @@ def open_image():
         image = Image.open(file_path)
         original_image_pil = image
         current_image_pil = image.copy()
-        undo_stack = []  # Clear undo/redo stack
-        redo_stack = []
-        # Display original image
         display_original_image(image)
-        # Display image on edit Canvas
         display_image(image)
-        # Update image info
         display_image_info(image)
     if hasattr(root, 'resize_width_entry'):
         reset_size()
