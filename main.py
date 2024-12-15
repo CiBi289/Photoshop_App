@@ -7,6 +7,9 @@ import numpy as np
 import scipy.ndimage as ndimage
 from skimage.util import random_noise
 from encoder import compression_img
+from rembg import remove
+from PIL import Image
+import io
 
 root = tk.Tk()
 root.title("Photoshop App")
@@ -60,7 +63,7 @@ def create_menu_bar():
     image_menu.add_command(label="Gray Scale",command = gray_scale_image, image = gray_icon, compound = "left")
     image_menu.add_command(label="Binary", command = binary_image, image = binary_icon, compound = "left")
     image_menu.add_command(label="Adjustment", command = adjustment_image, image = adjustment_icon, compound = "left")
-    image_menu.add_command(label = "Segment", command = segment_object_from_background, compound = "left")
+    image_menu.add_command(label = "Remove background", command = remove_background, compound = "left")
     menu_bar.add_cascade(label="Image", menu=image_menu)
 
 # Create "Filter" menu
@@ -88,6 +91,20 @@ def create_menu_bar():
     root.image_refs = [open_icon, save_icon, crop_icon, compression_icon, resize_icon, transform_icon,
                        gray_icon, binary_icon, adjustment_icon, edge_icon, filter_icon,
                        noise_icon, zoomin_icon, zoomout_icon, fit_icon]
+def remove_background():
+    global current_image_pil
+    if current_image_pil is None:
+        messagebox.showwarning("Warning", "Please open an image first!")
+        return
+
+    input_data = np.array(current_image_pil)
+    output_data = remove(input_data)
+
+    # Convert output data back to PIL image
+    output_image = Image.fromarray(output_data)
+    current_image_pil = output_image
+    display_image(current_image_pil)
+    display_image_info(current_image_pil)
 
 #***************CẮT ẢNH**************
 def crop_image():
