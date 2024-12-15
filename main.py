@@ -8,8 +8,6 @@ import scipy.ndimage as ndimage
 from skimage.util import random_noise
 from encoder import compression_img
 from rembg import remove
-from PIL import Image
-import io
 
 root = tk.Tk()
 root.title("Photoshop App")
@@ -60,10 +58,11 @@ def create_menu_bar():
     gray_icon = icon("gray.png")
     binary_icon = icon("binary.png")
     adjustment_icon = icon("adjustment.png")
+    remove_icon = icon("remove.png")
     image_menu.add_command(label="Gray Scale",command = gray_scale_image, image = gray_icon, compound = "left")
     image_menu.add_command(label="Binary", command = binary_image, image = binary_icon, compound = "left")
     image_menu.add_command(label="Adjustment", command = adjustment_image, image = adjustment_icon, compound = "left")
-    image_menu.add_command(label = "Remove background", command = remove_background, compound = "left")
+    image_menu.add_command(label="Remove Background", command = remove_background, image = remove_icon, compound = "left")
     menu_bar.add_cascade(label="Image", menu=image_menu)
 
 # Create "Filter" menu
@@ -96,16 +95,12 @@ def remove_background():
     if current_image_pil is None:
         messagebox.showwarning("Warning", "Please open an image first!")
         return
-
-    input_data = np.array(current_image_pil)
-    output_data = remove(input_data)
-
-    # Convert output data back to PIL image
-    output_image = Image.fromarray(output_data)
+    input_data = np.array(current_image_pil) # Chuyển đổi ảnh hiện tại sang mảng NumPy
+    output_data = remove(input_data) # Loại bỏ nền bằng rembg
+    output_image = Image.fromarray(output_data) # Chuyển đổi dữ liệu đã xử lý về ảnh PIL
     current_image_pil = output_image
     display_image(current_image_pil)
     display_image_info(current_image_pil)
-
 #***************CẮT ẢNH**************
 def crop_image():
     global edit_canvas
