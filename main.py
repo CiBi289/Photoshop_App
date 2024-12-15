@@ -60,6 +60,7 @@ def create_menu_bar():
     image_menu.add_command(label="Gray Scale",command = gray_scale_image, image = gray_icon, compound = "left")
     image_menu.add_command(label="Binary", command = binary_image, image = binary_icon, compound = "left")
     image_menu.add_command(label="Adjustment", command = adjustment_image, image = adjustment_icon, compound = "left")
+    image_menu.add_command(label = "Segment", command = segment_object_from_background, compound = "left")
     menu_bar.add_cascade(label="Image", menu=image_menu)
 
 # Create "Filter" menu
@@ -330,11 +331,9 @@ def adjustment_image():
         # Apply brightness
         enhancer = ImageEnhance.Brightness(original_image_pil)
         adjusted_image = enhancer.enhance(brightness / 100)
-
         # Apply contrast
         enhancer = ImageEnhance.Contrast(adjusted_image)
         adjusted_image = enhancer.enhance(contrast)
-
         # Apply saturation
         enhancer = ImageEnhance.Color(adjusted_image)
         adjusted_image = enhancer.enhance(saturation)
@@ -420,6 +419,26 @@ def adjustment_image():
     reset_button.pack(side=tk.LEFT, padx=5)
     cancel_button = Button(button_frame, text="Cancel", command=close_adjustment_frame, font=("Arial", 12, "bold"), bg="gray", fg="white")
     cancel_button.pack(side=tk.LEFT, padx=5)
+def segment_object_from_background():
+    global current_image_pil
+    if current_image_pil is None:
+        messagebox.showerror("Error", "No image loaded!")
+        return
+
+    image_array = np.array(current_image_pil)
+    if len(image_array.shape) == 3:  # Nếu ảnh có 3 kênh màu, chuyển về ảnh xám
+        image_array = np.mean(image_array, axis=2).astype(np.uint8)  # Chuyển đổi thành ảnh xám nếu cần thiết
+
+        # Lấy ngưỡng tìm được từ phương pháp Otsu
+        threshold = 150
+
+        # Phân tách ảnh dựa trên ngưỡng
+        binary_image = (image_array > threshold) * 255  # Các pixel lớn hơn ngưỡng thì là vật thể (255), còn lại là nền (0)
+        
+        segmented_image_pil = Image.fromarray(binary_image.astype(np.uint8))  # Chuyển đổi về kiểu ảnh PIL
+        current_image_pil = segmented_image_pil
+        display_image(current_image_pil)
+        display_image_info(current_image_pil)
 def edge_detection():
     global current_image_pil, original_image_pil, info_frame
 
@@ -830,7 +849,6 @@ def filter_image():
     def apply_gaussian_filter():
         global current_image_pil
         push_to_undo_stack()
-        gray_scale_image()
         img_array = np.array(current_image_pil)
         filtered_image_array = ndimage.gaussian_filter(img_array, sigma=1)
         filtered_image = Image.fromarray(filtered_image_array)
@@ -895,7 +913,7 @@ def create_layout():
     # Khung tool bar
     left_frame = tk.Frame(root)
     left_frame.pack(side="left", fill="y")
-    # Khung chứa ảnh gốc (fixed size)
+    # Khung chứa ảnh gốc 
     original_frame = tk.Frame(left_frame, bg="#DEFBFC", width=130, height=130)
     original_frame.pack(pady=10, padx=10)  # Add padding
     original_frame.pack_propagate(False)  # Ensure fixed size
@@ -924,14 +942,15 @@ def create_layout():
     h_scrollbar.config(command=edit_canvas.xview)
     v_scrollbar.config(command=edit_canvas.yview)
     # Khung chứa Image Info
-    info_frame = tk.Frame(root, bg="#DEFBFC", width=300)
+    info_frame = tk.Frame(root, bg="#DEFBFC", width=230)
     info_frame.pack(side="right", fill="y", padx=5, pady=5)
-    info_label = tk.Label(info_frame, text="            Image Info          ", bg="#DEFBFC", fg="black", font=("Arial", 14, "bold"))
+    info_label = tk.Label(info_frame, text="Image Info", bg="#DEFBFC", fg="black", font=("Arial", 14, "bold"))
     info_label.pack(pady=10)
+    info_frame.pack_propagate(False)
     # Thông tin về size và mode
-    size_label = tk.Label(info_frame, text="Size:                   pixels", font=("Arial", 12), bg="#ffffff", anchor="w", relief="solid")
+    size_label = tk.Label(info_frame, text="Size:               pixels", font=("Arial", 12), bg="#ffffff", anchor="w", relief="solid")
     size_label.pack(fill="x", padx=5, pady=5)
-    mode_label = tk.Label(info_frame, text="Mode:                         ", font=("Arial", 12), bg="#ffffff", anchor="w", relief="solid")
+    mode_label = tk.Label(info_frame, text="Mode: ", font=("Arial", 12), bg="#ffffff", anchor="w", relief="solid")
     mode_label.pack(fill="x", padx=5, pady=5)
 def push_to_undo_stack():
     """Lưu trạng thái hiện tại của ảnh vào stack undo"""
@@ -1057,7 +1076,9 @@ def display_image(image):
 # Save Image
 def save_image():
     global current_image_pil
-    file_path = filedialog.asksaveasfilename(defaultextension=".png",filetypes=[("PNG files", "*.png"),("JPEG files", "*.jpg"),("All files", "*.*")])
+    file_path = filedialog.asksaveasfilename(defaultextension=".png",filetypes=[("PNG files", "*.png"),
+                                                                                ("JPEG files", "*.jpg"),
+                                                                                ("All files", "*.*")])
     if file_path:
         current_image_pil.save(file_path)
         messagebox.showinfo("Success", f"Image saved to {file_path}")
